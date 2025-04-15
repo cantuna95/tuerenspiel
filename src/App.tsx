@@ -41,6 +41,9 @@ export default function App() {
   const [showSavePopup, setShowSavePopup] = useState(false);
   const [showConfirmReset, setShowConfirmReset] = useState(false);
   const [showRules, setShowRules] = useState(true);
+  const [showPostVideoPopup, setShowPostVideoPopup] = useState(false);
+  const [showDeathPopup, setShowDeathPopup] = useState(false);
+
   const [showInfoPopup, setShowInfoPopup] = useState(false);
   const handleDoorClick = (id: number) => {
     if (gameOver || doors.find((d) => d.id === id)?.opened || showRules) return;
@@ -66,17 +69,19 @@ export default function App() {
         setTimeout(() => {
           setVideoType(null);
           setZoomedDoorId(null);
+          setShowDeathPopup(true);
         }, 3000);
       } else {
         const reward = clicked.reward ?? 0;
         setPendingReward(reward);
         setVideoType("win");
 
+        // Gewinnvideo anzeigen für 3 Sekunden
         setTimeout(() => {
-          setWins((prev) => prev + reward);
-          setPendingReward(null);
           setVideoType(null);
           setZoomedDoorId(null);
+          // Jetzt erst das Popup zeigen, keine automatische Entfernung mehr!
+          setShowPostVideoPopup(true);
         }, 3000);
       }
     }, 1000);
@@ -138,7 +143,7 @@ export default function App() {
           disabled={gameOver || showRules}
           className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 text-sm"
         >
-          💰 Geld nehmen 
+          💰 Geld nehmen
         </button>
 
         <button
@@ -252,8 +257,8 @@ export default function App() {
         </div>
       )}
 
-       {/* Zoom */}
-       {zoomedDoorId !== null && !videoType && (
+      {/* Zoom */}
+      {zoomedDoorId !== null && !videoType && (
         <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center transition-all duration-500">
           <div className="w-[200px] sm:w-[300px] aspect-[3/4] transition-transform duration-700 scale-125">
             <img
@@ -273,11 +278,7 @@ export default function App() {
       {videoType && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex flex-col items-center justify-center z-60">
           <video
-            src={
-              videoType === "win"
-                ? "/videos/win.mp4"
-                : "/videos/death.mp4"
-            }
+            src={videoType === "win" ? "/videos/win.mp4" : "/videos/death.mp4"}
             autoPlay
             muted
             className="w-4/5 sm:w-2/5 rounded-lg"
@@ -287,6 +288,127 @@ export default function App() {
               +{pendingReward.toLocaleString()} € Gewinn!
             </p>
           )}
+        </div>
+      )}
+      {/* Post-Video-Popup */}
+      {showPostVideoPopup && pendingReward !== null && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-[90%] text-center">
+            <h2 className="text-xl font-bold mb-4">
+              🎉 Du hast {pendingReward.toLocaleString()} € gewonnen!
+            </h2>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  if (pendingReward) {
+                    setWins((prev) => prev + pendingReward);
+                  }
+                  setPendingReward(null);
+                  // Optional: kurz warten, damit React `wins` richtig updated
+                  setTimeout(() => {
+                    setShowPostVideoPopup(false);
+                  }, 10);
+                }}
+                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+              >
+                ✅ Weiterspielen
+              </button>
+              <button
+                onClick={() => {
+                  if (pendingReward) {
+                    setWins((prev) => prev + pendingReward);
+                  }
+                  setPendingReward(null);
+                  setTimeout(() => {
+                    setShowPostVideoPopup(false);
+                    handleExit();
+                  }, 10);
+                }}
+                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+              >
+                💰 Geld nehmen und aufhören
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showDeathPopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-[90%] text-center">
+            <h2 className="text-xl font-bold mb-4 text-red-600">
+              💀 Du hast verloren!
+            </h2>
+            <p className="mb-4">Vielleicht beim nächsten Mal mehr Glück.</p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={confirmNewGame}
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+              >
+                🔄 Neues Spiel starten
+              </button>
+              <button
+                onClick={() => setShowDeathPopup(false)}
+                className="bg-gray-400 px-4 py-2 rounded hover:bg-gray-500"
+              >
+                👀 Weiter anschauen
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Speicher-Popup */}
+      {showSavePopup && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-[90%] max-w-md text-center animate-fade-in">
+            <h2 className="text-xl font-bold mb-2">🎉 Glückwunsch!</h2>
+            <p className="mb-4">
+              Du hast <strong>{wins.toLocaleString()} €</strong> gewonnen.
+              <br />
+              Trage dich in die Bestenliste ein:
+            </p>
+            <input
+              type="text"
+              placeholder="Dein Name"
+              value={playerName}
+              onChange={(e) => setPlayerName(e.target.value)}
+              className="border px-4 py-2 rounded w-full mb-3"
+            />
+            <button
+              onClick={submitScore}
+              className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 w-full"
+            >
+              ✅ Eintragen
+            </button>
+            <button
+              onClick={() => setShowSavePopup(false)}
+              className="mt-2 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 w-full"
+            >
+              ❌ Nicht speichern
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Neues Spiel bestätigen */}
+      {showConfirmReset && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 max-w-sm w-[90%] text-center">
+            <h2 className="text-xl font-bold mb-4">⚠️ Bist du sicher?</h2>
+            <p className="mb-4">Dein aktueller Fortschritt geht verloren.</p>
+            <div className="flex justify-center gap-4">
+              <button
+                onClick={confirmNewGame}
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600"
+              >
+                Ja, neues Spiel
+              </button>
+              <button
+                onClick={() => setShowConfirmReset(false)}
+                className="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
