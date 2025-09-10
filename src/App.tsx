@@ -46,7 +46,13 @@ export default function App() {
 
   const [showInfoPopup, setShowInfoPopup] = useState(false);
   const handleDoorClick = (id: number) => {
-    if (gameOver || doors.find((d) => d.id === id)?.opened || showRules) return;
+    if (
+      gameOver ||
+      doors.find((d) => d.id === id)?.opened ||
+      showRules ||
+      zoomedDoorId !== null
+    )
+      return;
 
     setZoomedDoorId(id);
 
